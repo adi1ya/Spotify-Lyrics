@@ -3,24 +3,54 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import json
+from io import StringIO
 import time
 import spotify_token as st
-import ast
-from datetime import datetime
+
+query = ''
+currentSong = ''
+USER = os.environ.get('SPOTIFY_USER')
+PW = os.environ.get('SPOTIFY_PW')
+TOKEN = ''
 
 
-class Spotify:
-    def __init__(self, user, passw):
-        self.token = None
-        self.token_exp = None
-        self.user = user
-        self.passw = passw
-        self.gettoken()
-        self.spotheaders = {'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'Authorization': f'Bearer {self.token}',
-                            }
-        self.lyricheaders = {
+def get_token():
+    """ Get an OAuth token for Spotify """
+    global TOKEN
+    try:
+        data = st.start_session(USER,PW)
+        TOKEN = data[0]
+        EXPIRATION_DATE = data[1]
+    except:
+        quit('Unable to get OAuth Token :-( -- Check you have set your Spotify username and password correctly.')
+
+
+def song_data():
+    """ Query the Spotify API for currently playing song """
+    global query
+    headers = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + TOKEN,
+    }
+
+    try:
+        response = requests.get('https://api.spotify.com/v1/me/player/currently-playing', headers=headers)
+        json_data = json.loads(response.text)
+        ARTIST = json_data["item"]["artists"][0]["name"]
+        SONG = json_data["item"]["name"]
+        query = SONG + " " + ARTIST + " +lyrics"
+        return('Artist: %s\nSong: %s' % (ARTIST, SONG))
+    except:
+        #print('JSON Response Error.')  # TODO handle this better
+        get_token()  # Hacky, but fair to assume if API is not responding it could be due to an expired token
+        # print(response.content)
+        return(' ')
+
+
+def get_Song_Lyrics(query):
+    """ Download lyrics for current song """
+    headers_Get = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
@@ -29,54 +59,44 @@ class Spotify:
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1'
         }
-        self.artist = None
-        self.song = None
-        self.query = None
-        self.lyrics = ''
 
-    def gettoken(self):
-        if self.token is None or self.token_exp < datetime.now():
-            data = st.start_session(self.user, self.passw)
-            self.token = data[0]
-            self.token_exp = data[1]
-
-    def getsong(self):
-        response = requests.get('https://api.spotify.com/v1/me/player/currently-playing', headers=self.spotheaders)
-        if response.status_code != 200:
-            print(response.status_code)
-            print("Bad Response from Spotify API")
-        else:
-            json_data = json.loads(response.text)
-            self.artist = json_data["item"]["artists"][0]["name"]
-            if self.song != json_data["item"]["name"]:
-                self.song = json_data["item"]["name"]
-                self.query = (str(self.song) + '+' + str(self.artist) + '+lyrics').replace(' ', '+')
-                self.getlyrics()
-
-    def getlyrics(self):
-        self.lyrics = ''
-        s = requests.Session()
-        url = 'https://www.google.com/search?q={}&ie=utf-8&oe=utf-8'.format(self.query)
-        r = s.get(url, headers=self.lyricheaders)
-        soup = BeautifulSoup(r.text, "html.parser").find_all("span", {"jsname": "YS01Ge"})
-        for link in soup:
-            self.lyrics += (link.text + '\n')
-        print(f"{self.song} by {self.artist}\n")
-        print(f"{self.lyrics}\n")
+    lyric_text = '\n'
+    s = requests.Session()
+    query = '+'.join(query.split())
+    url = 'https://www.google.com/search?q=' + query + '&ie=utf-8&oe=utf-8'
+    r = s.get(url, headers=headers_Get)
+    soup = BeautifulSoup(r.text, "html.parser").find_all("span", {"jsname": "YS01Ge"})
+    for link in soup:
+        lyric_text += (link.text + '\n')
+    return lyric_text
 
 
 def main():
-    user = input('Spotify username: ')
-    passw = input('Spotify password: ')
-    spt = Spotify(user, passw)
-    while True:
+    """ Main loop """
+    get_token()  # Get an oAuth token
+    currentSong = ''
+
+    while True:  # Main loop
+        if song_data() != currentSong:  # Check if the song has changed
+            os.system('cls' if os.name == 'nt' else 'clear')  # Clear screen
+            print(song_data())  # Print song info
+            lyrics = get_Song_Lyrics(query)
+            if len(lyrics) < 2:
+                print('\nNo lyrics found 🎸')
+            else:
+                print(lyrics)
+            currentSong = song_data()
+        time.sleep(1)  # Delay between checking the Spotify API again
+
+
+if __name__ == '__main__':
+    """ Boilerplate """
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Quitting..')
         try:
-            spt.getsong()
-            time.sleep(3)
-        except KeyboardInterrupt:
             quit()
-
-
-if __name__ == "__main__":
-    main()
+        except SystemExit:
+            quit()
 
