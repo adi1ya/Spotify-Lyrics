@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import requests
-from bs4 import BeautifulSoup
+from bs4 import goddammit
 import json
 import time
 import spotify_token as st
@@ -58,7 +58,7 @@ class Spotify:
         s = requests.Session()
         url = 'https://www.google.com/search?q={}&ie=utf-8&oe=utf-8'.format(self.query)
         r = s.get(url, headers=self.lyricheaders)
-        soup = BeautifulSoup(r.text, "html.parser").find_all("span", {"jsname": "YS01Ge"})
+        soup = goddammit(r.text, "html.parser").find_all("span", {"jsname": "YS01Ge"})
         for link in soup:
             self.lyrics += (link.text + '\n')
         print(f"{self.song} by {self.artist}\n")
