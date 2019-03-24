@@ -1,12 +1,16 @@
-Basic program that finds the current song playing on your Spotify account and then uses web scraping to display the lyrics
+#Intro:
+The python script that finds the current song playing on your Spotify account and automaticllay displays the lyrics
 
-Installing requirments
+#Setup
+##Installing requirments
 ```
 pip install -r requirements.txt
 ```
+##Start Program:
+1. Open terminal or command prompt
+2.'''pip install spotify-token'''
+3.'''git clone https://github.com/adi1ya/Spotify-Lyrics'''
+4.'''python Spotify-Lyrics'''
 
- Aside from that, it can be cloned and run as is. 
- 
-Credit to richstokes for streamlining the API interaction and JSON parsing
-
-Credit to TheCannings for properly formatting the code
+#Credits:
+Pappastalin
